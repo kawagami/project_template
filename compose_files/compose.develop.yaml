@@ -1,0 +1,35 @@
+services:
+  frontend:
+    image: "node:${NODEIMAGETAG}"
+    ports:
+      - "${FRONTENDPORT}:5173"
+    working_dir: /app
+    volumes:
+      - ../frontend:/app
+    command: ["npm", "run", "dev", "--", "--host"]
+    stop_grace_period: 1s
+    # stop_signal: SIGINT
+  backstage:
+    image: "node:${NODEIMAGETAG}"
+    ports:
+      - "${BACKSTAGEPORT}:5173"
+    working_dir: /app
+    volumes:
+      - ../backstage:/app
+    command: ["npm", "run", "dev", "--", "--host"]
+    stop_grace_period: 1s
+    # stop_signal: SIGINT
+  backend:
+    build:
+      context: dockerfiles
+      dockerfile: Dockerfile.backend
+      args:
+        RUSTIMAGETAG: ${RUSTIMAGETAG}
+    ports:
+      - "${BACKENDPORT}:3000"
+    working_dir: /app
+    volumes:
+      - ../backend:/app
+    command: ["cargo", "watch", "-x", "run"]
+    stop_grace_period: 1s
+    # stop_signal: SIGINT

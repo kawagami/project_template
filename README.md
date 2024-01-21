@@ -1,4 +1,7 @@
 # 一個包含前端 & 後台 & 後端模板的專案
+* 目的是建立一個本地 & 線上都方便部署的專案
+* 複製 .env.example 檔案改名為 .env
+* 依照需求修改後，在此專案下指令 docker-compose up -d 即可
 
 ## 前端(frontend)
 * vue - vite
@@ -28,3 +31,5 @@
     2. develop 環境的 compose.yaml 檔案 compose.develop.yaml
     3. production 環境的 compose.yaml 檔案 compose.production.yaml
 * 撰寫初始化專案的 shell
+    * 完成依照 .env 設定的 repo 網址來判斷如何初始化專案
+    * 走一個 git repo 管理所有專案的話應該是用不到

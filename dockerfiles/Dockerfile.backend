@@ -1,0 +1,7 @@
+ARG RUSTIMAGETAG
+
+FROM rust:${RUSTIMAGETAG}
+
+RUN cargo install cargo-watch
+
+CMD ["cargo", "--version"]
