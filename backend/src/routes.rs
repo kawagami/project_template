@@ -20,7 +20,12 @@ pub async fn app(pool: Pool<Postgres>) -> Router {
         )
         .route("/create_table", get(create_table))
         .route("/products", post(insert_one_product))
-        .route("/products/:id", get(get_product).patch(update_product))
+        .route(
+            "/products/:id",
+            get(get_product)
+                .patch(update_product)
+                .delete(delete_product),
+        )
         .with_state(pool)
 }
 
@@ -158,6 +163,7 @@ async fn update_product(
     Path(product_id): Path<i32>,
     Json(update_product): Json<UpdateProduct>,
 ) -> Result<Json<Product>, (StatusCode, String)> {
+    // 取得舊設定
     let query = "select * from products where product_id = $1";
     let mut original_product = sqlx::query_as::<_, Product>(query)
         .bind(product_id)
@@ -165,7 +171,7 @@ async fn update_product(
         .await
         .map_err(|err| (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()))?;
 
-    // 將有 input 的值把舊值替換掉
+    // 將有 input 的值把舊設定替換掉
     if let Some(product_name) = &update_product.product_name {
         original_product.product_name = product_name.to_string();
     }
@@ -213,4 +219,18 @@ async fn update_product(
         .map_err(|err| (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()))?;
 
     Ok(Json(result))
+}
+
+async fn delete_product(
+    State(pool): State<PgPool>,
+    Path(product_id): Path<i32>,
+) -> Result<String, (StatusCode, String)> {
+    let query = "DELETE FROM products WHERE product_id = $1";
+    let _result = sqlx::query(query)
+        .bind(product_id)
+        .execute(&pool)
+        .await
+        .map_err(|err| (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()))?;
+
+    Ok("success".to_string())
 }
