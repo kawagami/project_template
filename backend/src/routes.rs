@@ -20,7 +20,7 @@ pub async fn app(pool: Pool<Postgres>) -> Router {
         )
         .route("/create_table", get(create_table))
         .route("/products", post(insert_one_product))
-        .route("/products/:id", get(get_product))
+        .route("/products/:id", get(get_product).patch(update_product))
         .with_state(pool)
 }
 
@@ -133,7 +133,7 @@ async fn insert_one_product(
 async fn get_product(
     State(pool): State<PgPool>,
     Path(product_id): Path<i32>,
-) -> Result<String, (StatusCode, String)> {
+) -> Result<Json<Product>, (StatusCode, String)> {
     let query = "select * from products where product_id = $1";
     let result = sqlx::query_as::<_, Product>(query)
         .bind(product_id)
@@ -141,5 +141,76 @@ async fn get_product(
         .await
         .map_err(|err| (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()))?;
 
-    Ok(format!("{}", result))
+    Ok(Json(result))
+}
+
+#[derive(Deserialize)]
+struct UpdateProduct {
+    product_name: Option<String>,
+    description: Option<String>,
+    price: Option<f64>,
+    stock_quantity: Option<i32>,
+    category_id: Option<i32>,
+}
+
+async fn update_product(
+    State(pool): State<PgPool>,
+    Path(product_id): Path<i32>,
+    Json(update_product): Json<UpdateProduct>,
+) -> Result<Json<Product>, (StatusCode, String)> {
+    let query = "select * from products where product_id = $1";
+    let mut original_product = sqlx::query_as::<_, Product>(query)
+        .bind(product_id)
+        .fetch_one(&pool)
+        .await
+        .map_err(|err| (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()))?;
+
+    // 將有 input 的值把舊值替換掉
+    if let Some(product_name) = &update_product.product_name {
+        original_product.product_name = product_name.to_string();
+    }
+
+    if let Some(description) = &update_product.description {
+        original_product.description = Some(description.to_string());
+    }
+
+    if let Some(price) = &update_product.price {
+        original_product.price = price.to_owned();
+    }
+
+    if let Some(stock_quantity) = &update_product.stock_quantity {
+        original_product.stock_quantity = stock_quantity.to_owned();
+    }
+
+    if let Some(category_id) = &update_product.category_id {
+        original_product.category_id = Some(category_id.to_owned());
+    }
+
+    let update_query = r#"
+        UPDATE
+            products
+        SET
+            product_name = $1,
+            description = $2,
+            price = $3,
+            stock_quantity = $4,
+            category_id = $5
+        WHERE
+            product_id = $6
+        RETURNING
+            *;
+    "#;
+
+    let result = sqlx::query_as::<_, Product>(update_query)
+        .bind(original_product.product_name)
+        .bind(original_product.description)
+        .bind(original_product.price)
+        .bind(original_product.stock_quantity)
+        .bind(original_product.category_id)
+        .bind(product_id)
+        .fetch_one(&pool)
+        .await
+        .map_err(|err| (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()))?;
+
+    Ok(Json(result))
 }
